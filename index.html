@@ -936,7 +936,7 @@ async function sendToAgent(){
   if(sel.value==='custom') graphId=document.getElementById('customAgentId').value.trim();
   const prompt=document.getElementById('agentPrompt').value.trim();
   if(!apiKey){agentLog('❌ API key required','err');return}
-  if(!graphId){agentLog('❌ No graph ID found for selected agent','err');return}
+  if(!graphId){agentLog('❌ No graph ID for selected agent','err');return}
   localStorage.setItem('viz-agpt-key',apiKey);
   const code=currentLang==='html'?getFullHTML():editor.value;
   const fullPrompt=prompt+'\n\nLanguage: '+currentLang+'\n\n```\n'+code+'\n```';
@@ -945,28 +945,28 @@ async function sendToAgent(){
   agentSetProgress(0);
   document.getElementById('sendAgentBtn').textContent='⏳ Sending...';
   document.getElementById('sendAgentBtn').disabled=true;
-  // CORS proxy required — backend.agpt.co does not send Access-Control-Allow-Origin
+  // External API uses X-API-Key header and /external-api/v1/ base path
   const PROXY='https://corsproxy.io/?url=';
-  const BASE='https://backend.agpt.co';
-  agentLog('📡 Connecting to AutoGPT API...','info');
+  const BASE='https://backend.agpt.co/external-api';
+  const HEADERS={'X-API-Key':apiKey,'Content-Type':'application/json','Accept':'application/json'};
+  agentLog('📡 Connecting to AutoGPT External API...','info');
   agentLog('🔗 Graph: '+graphId,'info');
   agentSetProgress(10);
   try{
-    agentLog('⬆️ Sending code ('+code.length+' chars)...','info');
-    // First get active version
+    agentLog('⬆️ Sending ('+code.length+' chars)...','info');
+    // Get active version
     let version=1;
     try{
-      const vRes=await fetch(PROXY+encodeURIComponent(BASE+'/api/graphs/'+graphId+'/versions/active'),{
-        headers:{'Authorization':'Bearer '+apiKey,'Accept':'application/json'}
-      });
+      const vRes=await fetch(PROXY+encodeURIComponent(BASE+'/v1/graphs/'+graphId),{headers:HEADERS});
       if(vRes.ok){const vd=await vRes.json();version=vd.version||vd.graph_version||1;}
     }catch(_){}
-    agentLog('📌 Using graph version: '+version,'info');
+    agentLog('📌 Graph version: '+version,'info');
     agentSetProgress(25);
-    const execRes=await fetch(PROXY+encodeURIComponent(BASE+'/api/graphs/'+graphId+'/execute/'+version),{
+    // Execute
+    const execRes=await fetch(PROXY+encodeURIComponent(BASE+'/v1/graphs/'+graphId+'/execute/'+version),{
       method:'POST',
-      headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json'},
-      body:JSON.stringify({inputs:{input:fullPrompt}})
+      headers:HEADERS,
+      body:JSON.stringify({node_input:{input:fullPrompt}})
     });
     if(!execRes.ok){
       const err=await execRes.json().catch(()=>({detail:'HTTP '+execRes.status}));
@@ -974,60 +974,64 @@ async function sendToAgent(){
     }
     const execData=await execRes.json();
     const execId=execData.id||execData.graph_exec_id||execData.execution_id;
-    if(!execId) throw new Error('No execution ID returned: '+JSON.stringify(execData));
-    agentLog('✅ Execution started: '+execId,'ok');
+    if(!execId) throw new Error('No execution ID in response: '+JSON.stringify(execData).slice(0,200));
+    agentLog('✅ Started: '+execId,'ok');
+    agentLog('⏳ Polling for result...','info');
     agentSetProgress(40);
-    agentLog('⏳ Polling for result (this may take 30-120s)...','info');
     let attempts=0;
-    const maxAttempts=72; // 6 min max
+    const maxAttempts=72;
     const poll=async()=>{
       attempts++;
       try{
-        const res=await fetch(PROXY+encodeURIComponent(BASE+'/api/graphs/'+graphId+'/executions/'+execId),{
-          headers:{'Authorization':'Bearer '+apiKey,'Accept':'application/json'}
+        const res=await fetch(PROXY+encodeURIComponent(BASE+'/v1/graphs/'+graphId+'/executions/'+execId+'/results'),{
+          headers:HEADERS
         });
         if(res.ok){
           const data=await res.json();
+          // Results endpoint returns array of node results
+          const results=Array.isArray(data)?data:(data.results||data.outputs||[]);
           const st=(data.status||'').toUpperCase();
-          if(st==='COMPLETED'||st==='SUCCESS'){
+          if(results.length>0&&(!st||st==='COMPLETED'||st==='SUCCESS')){
             agentLog('✅ Agent completed!','ok');
             agentSetProgress(100);
+            // Extract output: find nodes with output data, pick longest text value
             let output='';
-            // Walk output_data fields
-            const od=data.output_data||data.outputs||data.output||{};
-            if(typeof od==='string') output=od;
-            else{
-              const vals=Object.values(od);
-              for(const v of vals){
-                if(typeof v==='string'&&v.length>output.length) output=v;
-                else if(v&&typeof v==='object'){
-                  const inner=v.output||v.response||v.value||v.result||v.text||'';
-                  if(typeof inner==='string'&&inner.length>output.length) output=inner;
-                }
-              }
-              if(!output) output=JSON.stringify(od,null,2);
+            for(const r of results){
+              const od=r.output||r.output_data||r.data||r.value||r.result||{};
+              const scan=(obj)=>{
+                if(typeof obj==='string'&&obj.length>output.length) output=obj;
+                else if(obj&&typeof obj==='object') Object.values(obj).forEach(scan);
+              };
+              scan(od);
             }
+            if(!output) output=JSON.stringify(data,null,2);
             lastAgentOutput=output;
             document.getElementById('agentOutput').textContent=output;
             document.getElementById('agentResult').style.display='block';
             document.getElementById('sendAgentBtn').textContent='🤖 Send to Agent';
             document.getElementById('sendAgentBtn').disabled=false;
             return;
-          }else if(st==='FAILED'||st==='ERROR'){
-            throw new Error('Agent execution failed: '+(data.error||data.detail||'unknown'));
-          }else{
-            agentLog('⏳ Status: '+st+' ('+attempts+'/'+maxAttempts+')','info');
+          } else if(st==='FAILED'||st==='ERROR'){
+            throw new Error('Agent failed: '+(data.error||data.detail||'unknown'));
+          } else {
+            agentLog('⏳ Waiting... ('+attempts+'/'+maxAttempts+')','info');
             agentSetProgress(Math.min(40+attempts*0.8,90));
           }
-        }else{
-          agentLog('⚠️ Poll HTTP '+res.status+' ('+attempts+')','info');
+        } else {
+          agentLog('⚠️ Poll HTTP '+res.status,'info');
         }
       }catch(e){
-        if(e.message.includes('failed')||e.message.includes('Error')){throw e}
-        agentLog('⚠️ Poll error: '+e.message,'info');
+        if(e.message.startsWith('Agent failed')){
+          agentLog('❌ '+e.message,'err');
+          agentSetProgress(-1);
+          document.getElementById('sendAgentBtn').textContent='🤖 Send to Agent';
+          document.getElementById('sendAgentBtn').disabled=false;
+          return;
+        }
+        agentLog('⚠️ Poll err: '+e.message,'info');
       }
       if(attempts>=maxAttempts){
-        agentLog('⏰ Timeout after 6 min — check AutoGPT dashboard for results','err');
+        agentLog('⏰ Timeout — check app.agpt.co for results','err');
         agentSetProgress(-1);
         document.getElementById('sendAgentBtn').textContent='🤖 Send to Agent';
         document.getElementById('sendAgentBtn').disabled=false;
