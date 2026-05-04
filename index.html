@@ -970,7 +970,14 @@ async function sendToAgent(){
     });
     if(!execRes.ok){
       const err=await execRes.json().catch(()=>({detail:'HTTP '+execRes.status}));
-      throw new Error(err.detail||err.message||'Execute failed: '+execRes.status);
+      const msg=err.detail||err.message||'Execute failed: '+execRes.status;
+      if(msg.includes('credentials')){
+        agentLog('🔑 Credential missing in agent graph','err');
+        agentLog('Fix: app.agpt.co → Library → open agent → edit the AI node → attach your API key credential → Save','info');
+        agentLog('Then retry here — no code change needed.','info');
+        throw new Error(msg);
+      }
+      throw new Error(msg);
     }
     const execData=await execRes.json();
     const execId=execData.id||execData.graph_exec_id||execData.execution_id;
