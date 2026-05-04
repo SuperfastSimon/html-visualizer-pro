@@ -301,28 +301,36 @@ select.lang-sel{padding:4px 6px;background:#12121f;border:1px solid #6366f1;colo
 <div class="mo" id="agentModal">
   <div class="md">
     <h2>🤖 Send to Agent</h2>
-    <p>Stuur je code naar een AutoGPT agent voor verbetering en krijg het resultaat terug.</p>
+    <p>Send your code to an AutoGPT agent — runs live, polls for result, applies back to editor.</p>
     <label>AutoGPT API Key</label>
-    <input type="password" id="agptKey" placeholder="Bearer token of API key">
-    <div class="hint">⚠️ Wordt alleen lokaal opgeslagen (localStorage)</div>
+    <input type="password" id="agptKey" placeholder="Your AutoGPT API key (agpt_...)">
+    <div class="hint">🔒 Stored locally only. Get your key at <b>app.agpt.co → Settings → API Keys</b>.</div>
     <label>Agent selecteren</label>
     <select id="agentSelect" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
       <optgroup label="🏗 Genesis Protocol">
-        <option value="d5f31b2a-d683-4748-a0e3-acbb9ffde653">Genesis Boss Agent</option>
-        <option value="a2627a06-0d4a-4d9b-bf61-ab428f05c04f" selected>Code Writer Agent</option>
-        <option value="ecbd1bbb-7992-452d-8901-aeaa7205fa55">Code Architect Agent</option>
-        <option value="96c9f3ce-b970-4c50-bf2e-37d089d13422">Genesis Builder Agent</option>
+        <option value="d5f31b2a-d683-4748-a0e3-acbb9ffde653" data-graph="63421075-a04d-458d-a845-082a44a8d522">Genesis Boss Agent</option>
+        <option value="a2627a06-0d4a-4d9b-bf61-ab428f05c04f" data-graph="825855d2-1af3-4915-b26d-71bd65ac7c45" selected>Code Writer Agent</option>
+        <option value="ecbd1bbb-7992-452d-8901-aeaa7205fa55" data-graph="9d4cedb8-d047-4921-ac79-cf636e761b99">Code Architect Agent</option>
+        <option value="96c9f3ce-b970-4c50-bf2e-37d089d13422" data-graph="af73c435-ab1d-4fed-beca-e8e5b9b5b95e">Genesis Builder Agent</option>
+        <option value="56b3ad38-fa86-4757-978d-0671d984e513" data-graph="da52be89-4c37-4c38-82ce-bc5018771846">Genesis Deployment Agent</option>
+        <option value="d4488f6d-b2ec-43c3-b16f-2aaeecc577d6" data-graph="c1fdd73c-644f-4234-94fd-f96f0a74ef6f">Genesis Maintainer</option>
       </optgroup>
       <optgroup label="📄 Content">
-        <option value="c4efcf4d-9464-4b35-b2e6-10518952f2f5">AI Premium Report Factory</option>
-        <option value="6387fd67-6aea-4090-9cca-fed50f747cdc">Business Concept Studio</option>
+        <option value="c4efcf4d-9464-4b35-b2e6-10518952f2f5" data-graph="16bf28ad-958e-4207-a29f-cf4a0a92d945">AI Premium Report Factory</option>
+        <option value="6387fd67-6aea-4090-9cca-fed50f747cdc" data-graph="cd0870a3-0a0f-425e-91cf-041b84548ef7">Business Concept Studio</option>
+        <option value="3fdbbfc4-9193-43b9-a2da-1cb7a8a6a64d" data-graph="1e381f46-1619-4397-89c2-98885245d5b3">Nano Banana Pipeline</option>
+      </optgroup>
+      <optgroup label="📝 CV / Resume">
+        <option value="88396db5-3d33-4e5d-ac8a-e84fc9f6e36d" data-graph="2bf5bf5d-045c-42cb-8dda-0886596482f9">CV Quick Start (Free)</option>
+        <option value="50243f19-ef96-4864-99bf-10e77afb1377" data-graph="00183a37-d57a-47c9-a8ae-1ba9731c4432">CV Pro - Professional</option>
+        <option value="87c094ba-e0db-490f-8474-657d47b2b90a" data-graph="cdd6dd0d-c4c0-41c2-8dcd-781a55cd1cfe">Elite Application Package</option>
       </optgroup>
       <optgroup label="🛠 Custom">
-        <option value="custom">⌨️ Custom Agent ID...</option>
+        <option value="custom">⌨️ Custom Graph ID...</option>
       </optgroup>
     </select>
     <div id="customAgentWrap" style="display:none;margin-top:8px">
-      <input type="text" id="customAgentId" placeholder="Library Agent ID (UUID)">
+      <input type="text" id="customAgentId" placeholder="Graph ID (UUID from AutoGPT)">
     </div>
     <label>Instructie voor de agent</label>
     <textarea id="agentPrompt" style="width:100%;padding:8px 12px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px;min-height:80px;outline:none;font-family:system-ui;resize:vertical" placeholder="Bijv: Verbeter deze code, voeg error handling toe, maak het responsive...">Review and improve this code. Fix any bugs, improve performance, and add best practices. Return the improved code.</textarea>
@@ -333,10 +341,15 @@ select.lang-sel{padding:4px 6px;background:#12121f;border:1px solid #6366f1;colo
       <button class="btn" id="modeConvert" onclick="setAgentMode('convert')" style="flex:1;padding:6px">🔄 Convert</button>
     </div>
     <br>
-    <button class="btn primary" onclick="sendToAgent()" style="width:100%;padding:10px" id="sendAgentBtn">🤖 Send to Agent</button>
+    <button class="btn primary" onclick="sendToAgent()" style="width:100%;padding:10px;font-size:13px;font-weight:600" id="sendAgentBtn">🤖 Send to Agent</button>
+    <div id="agentProgress" style="display:none;margin-top:8px">
+      <div style="background:#1e1e36;border-radius:999px;height:4px;overflow:hidden">
+        <div id="agentProgressBar" style="height:100%;background:linear-gradient(90deg,#6366f1,#a855f7);width:0%;transition:width 0.5s;border-radius:999px"></div>
+      </div>
+    </div>
     <div id="agentLog" class="deploy-log"></div>
     <div id="agentResult" style="display:none;margin-top:10px">
-      <label>📥 Agent Output</label>
+      <label>📥 Agent Output <span style="font-weight:400;font-size:10px;color:#888">(code blocks auto-extracted on Apply)</span></label>
       <pre id="agentOutput" style="background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;font-size:12px;font-family:monospace;max-height:250px;overflow:auto;white-space:pre-wrap"></pre>
       <div style="display:flex;gap:6px;margin-top:8px">
         <button class="btn primary" onclick="applyAgentResult()" style="flex:1;padding:8px">✅ Apply to Editor</button>
@@ -908,63 +921,91 @@ function agentLog(msg,cls){
   log.innerHTML+='<div class="'+(cls||'info')+'">'+msg+'</div>';
   log.scrollTop=log.scrollHeight;
 }
+function agentSetProgress(pct){
+  const bar=document.getElementById('agentProgressBar');
+  const wrap=document.getElementById('agentProgress');
+  if(!bar||!wrap) return;
+  if(pct>=0){wrap.style.display='block';bar.style.width=pct+'%';}
+  else{wrap.style.display='none';bar.style.width='0%';}
+}
 let lastAgentOutput='';
 async function sendToAgent(){
   const apiKey=document.getElementById('agptKey').value.trim();
-  let agentId=document.getElementById('agentSelect').value;
-  if(agentId==='custom')agentId=document.getElementById('customAgentId').value.trim();
+  const sel=document.getElementById('agentSelect');
+  let graphId=sel.options[sel.selectedIndex]?.dataset?.graph||'';
+  if(sel.value==='custom') graphId=document.getElementById('customAgentId').value.trim();
   const prompt=document.getElementById('agentPrompt').value.trim();
   if(!apiKey){agentLog('❌ API key required','err');return}
-  if(!agentId){agentLog('❌ Agent ID required','err');return}
+  if(!graphId){agentLog('❌ No graph ID found for selected agent','err');return}
   localStorage.setItem('viz-agpt-key',apiKey);
   const code=currentLang==='html'?getFullHTML():editor.value;
   const fullPrompt=prompt+'\n\nLanguage: '+currentLang+'\n\n```\n'+code+'\n```';
   document.getElementById('agentLog').innerHTML='';
   document.getElementById('agentResult').style.display='none';
+  agentSetProgress(0);
   document.getElementById('sendAgentBtn').textContent='⏳ Sending...';
   document.getElementById('sendAgentBtn').disabled=true;
+  // CORS proxy required — backend.agpt.co does not send Access-Control-Allow-Origin
+  const PROXY='https://corsproxy.io/?url=';
+  const BASE='https://backend.agpt.co';
   agentLog('📡 Connecting to AutoGPT API...','info');
-  agentLog('🤖 Agent: '+agentId,'info');
+  agentLog('🔗 Graph: '+graphId,'info');
+  agentSetProgress(10);
   try{
-    // Trigger agent execution via AutoGPT External API
     agentLog('⬆️ Sending code ('+code.length+' chars)...','info');
-    const execRes=await fetch('https://backend.agpt.co/api/v2/library/agents/'+agentId+'/execute',{
+    // First get active version
+    let version=1;
+    try{
+      const vRes=await fetch(PROXY+encodeURIComponent(BASE+'/api/graphs/'+graphId+'/versions/active'),{
+        headers:{'Authorization':'Bearer '+apiKey,'Accept':'application/json'}
+      });
+      if(vRes.ok){const vd=await vRes.json();version=vd.version||vd.graph_version||1;}
+    }catch(_){}
+    agentLog('📌 Using graph version: '+version,'info');
+    agentSetProgress(25);
+    const execRes=await fetch(PROXY+encodeURIComponent(BASE+'/api/graphs/'+graphId+'/execute/'+version),{
       method:'POST',
       headers:{'Authorization':'Bearer '+apiKey,'Content-Type':'application/json'},
-      body:JSON.stringify({input_data:{input:fullPrompt}})
+      body:JSON.stringify({inputs:{input:fullPrompt}})
     });
     if(!execRes.ok){
       const err=await execRes.json().catch(()=>({detail:'HTTP '+execRes.status}));
       throw new Error(err.detail||err.message||'Execute failed: '+execRes.status);
     }
     const execData=await execRes.json();
-    const execId=execData.id||execData.execution_id;
+    const execId=execData.id||execData.graph_exec_id||execData.execution_id;
+    if(!execId) throw new Error('No execution ID returned: '+JSON.stringify(execData));
     agentLog('✅ Execution started: '+execId,'ok');
-    agentLog('⏳ Waiting for result...','info');
-    // Poll for result
+    agentSetProgress(40);
+    agentLog('⏳ Polling for result (this may take 30-120s)...','info');
     let attempts=0;
-    const maxAttempts=60;
+    const maxAttempts=72; // 6 min max
     const poll=async()=>{
       attempts++;
       try{
-        const res=await fetch('https://backend.agpt.co/api/v2/library/agents/'+agentId+'/executions/'+execId,{
-          headers:{'Authorization':'Bearer '+apiKey}
+        const res=await fetch(PROXY+encodeURIComponent(BASE+'/api/graphs/'+graphId+'/executions/'+execId),{
+          headers:{'Authorization':'Bearer '+apiKey,'Accept':'application/json'}
         });
         if(res.ok){
           const data=await res.json();
-          if(data.status==='completed'||data.status==='COMPLETED'){
+          const st=(data.status||'').toUpperCase();
+          if(st==='COMPLETED'||st==='SUCCESS'){
             agentLog('✅ Agent completed!','ok');
-            // Extract output
+            agentSetProgress(100);
             let output='';
-            if(data.output_data){
-              if(typeof data.output_data==='string')output=data.output_data;
-              else if(data.output_data.output)output=data.output_data.output;
-              else if(data.output_data.response)output=data.output_data.response;
-              else output=JSON.stringify(data.output_data,null,2);
-            }else if(data.output){
-              output=typeof data.output==='string'?data.output:JSON.stringify(data.output,null,2);
-            }else{
-              output=JSON.stringify(data,null,2);
+            // Walk output_data fields
+            const od=data.output_data||data.outputs||data.output||{};
+            if(typeof od==='string') output=od;
+            else{
+              const vals=Object.values(od);
+              for(const v of vals){
+                if(typeof v==='string'&&v.length>output.length) output=v;
+                else if(v&&typeof v==='object'){
+                  const inner=v.output||v.response||v.value||v.result||v.text||'';
+                  if(typeof inner==='string'&&inner.length>output.length) output=inner;
+                }
+              }
+              if(!output) output=JSON.stringify(od,null,2);
             }
             lastAgentOutput=output;
             document.getElementById('agentOutput').textContent=output;
@@ -972,26 +1013,32 @@ async function sendToAgent(){
             document.getElementById('sendAgentBtn').textContent='🤖 Send to Agent';
             document.getElementById('sendAgentBtn').disabled=false;
             return;
-          }else if(data.status==='failed'||data.status==='FAILED'){
-            throw new Error('Agent execution failed: '+(data.error||'unknown error'));
+          }else if(st==='FAILED'||st==='ERROR'){
+            throw new Error('Agent execution failed: '+(data.error||data.detail||'unknown'));
           }else{
-            agentLog('⏳ Status: '+data.status+' (attempt '+attempts+'/'+maxAttempts+')','info');
+            agentLog('⏳ Status: '+st+' ('+attempts+'/'+maxAttempts+')','info');
+            agentSetProgress(Math.min(40+attempts*0.8,90));
           }
+        }else{
+          agentLog('⚠️ Poll HTTP '+res.status+' ('+attempts+')','info');
         }
       }catch(e){
-        if(e.message.includes('failed')){throw e}
+        if(e.message.includes('failed')||e.message.includes('Error')){throw e}
+        agentLog('⚠️ Poll error: '+e.message,'info');
       }
       if(attempts>=maxAttempts){
-        agentLog('⏰ Timeout — check AutoGPT dashboard for results','err');
+        agentLog('⏰ Timeout after 6 min — check AutoGPT dashboard for results','err');
+        agentSetProgress(-1);
         document.getElementById('sendAgentBtn').textContent='🤖 Send to Agent';
         document.getElementById('sendAgentBtn').disabled=false;
         return;
       }
       setTimeout(poll,5000);
     };
-    setTimeout(poll,3000);
+    setTimeout(poll,4000);
   }catch(e){
     agentLog('❌ Error: '+e.message,'err');
+    agentSetProgress(-1);
     document.getElementById('sendAgentBtn').textContent='🤖 Send to Agent';
     document.getElementById('sendAgentBtn').disabled=false;
   }
