@@ -309,7 +309,7 @@ select.lang-sel{padding:4px 6px;background:#12121f;border:1px solid #6366f1;colo
     <select id="agentSelect" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
       <optgroup label="🏗 Genesis Protocol">
         <option value="d5f31b2a-d683-4748-a0e3-acbb9ffde653" data-graph="63421075-a04d-458d-a845-082a44a8d522">Genesis Boss Agent</option>
-        <option value="a2627a06-0d4a-4d9b-bf61-ab428f05c04f" data-graph="825855d2-1af3-4915-b26d-71bd65ac7c45" selected>Code Writer Agent</option>
+        <option value="a2627a06-0d4a-4d9b-bf61-ab428f05c04f" data-graph="825855d2-1af3-4915-b26d-71bd65ac7c45" data-webhook="https://backend.agpt.co/api/integrations/generic_webhook/webhooks/00d8b12d-a41e-4a59-a81b-e246783043d5/ingress" selected>Code Writer Agent</option>
         <option value="ecbd1bbb-7992-452d-8901-aeaa7205fa55" data-graph="9d4cedb8-d047-4921-ac79-cf636e761b99">Code Architect Agent</option>
         <option value="96c9f3ce-b970-4c50-bf2e-37d089d13422" data-graph="af73c435-ab1d-4fed-beca-e8e5b9b5b95e">Genesis Builder Agent</option>
         <option value="56b3ad38-fa86-4757-978d-0671d984e513" data-graph="da52be89-4c37-4c38-82ce-bc5018771846">Genesis Deployment Agent</option>
@@ -933,11 +933,12 @@ async function sendToAgent(){
   const apiKey=document.getElementById('agptKey').value.trim();
   const sel=document.getElementById('agentSelect');
   let graphId=sel.options[sel.selectedIndex]?.dataset?.graph||'';
+  const webhookUrl=sel.options[sel.selectedIndex]?.dataset?.webhook||'';
   if(sel.value==='custom') graphId=document.getElementById('customAgentId').value.trim();
   const prompt=document.getElementById('agentPrompt').value.trim();
-  if(!apiKey){agentLog('❌ API key required','err');return}
-  if(!graphId){agentLog('❌ No graph ID for selected agent','err');return}
-  localStorage.setItem('viz-agpt-key',apiKey);
+  if(!webhookUrl&&!apiKey){agentLog('❌ API key required','err');return}
+  if(!webhookUrl&&!graphId){agentLog('❌ No graph ID for selected agent','err');return}
+  if(apiKey) localStorage.setItem('viz-agpt-key',apiKey);
   const code=currentLang==='html'?getFullHTML():editor.value;
   const fullPrompt=prompt+'\n\nLanguage: '+currentLang+'\n\n```\n'+code+'\n```';
   document.getElementById('agentLog').innerHTML='';
@@ -945,7 +946,35 @@ async function sendToAgent(){
   agentSetProgress(0);
   document.getElementById('sendAgentBtn').textContent='⏳ Sending...';
   document.getElementById('sendAgentBtn').disabled=true;
-  // External API uses X-API-Key header and /external-api/v1/ base path
+
+  // --- Webhook path (no API key needed) ---
+  if(webhookUrl){
+    agentLog('📡 Sending via webhook...','info');
+    agentSetProgress(20);
+    try{
+      const whRes=await fetch('https://corsproxy.io/?url='+encodeURIComponent(webhookUrl),{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({input:fullPrompt})
+      });
+      if(whRes.ok){
+        agentLog('✅ Webhook accepted — agent is running!','ok');
+        agentLog('⏳ Results appear in app.agpt.co → Library → Code Writer Agent','info');
+        agentSetProgress(100);
+      } else {
+        agentLog('❌ Webhook error: HTTP '+whRes.status,'err');
+        agentSetProgress(-1);
+      }
+    }catch(e){
+      agentLog('❌ '+e.message,'err');
+      agentSetProgress(-1);
+    }
+    document.getElementById('sendAgentBtn').textContent='🤖 Send to Agent';
+    document.getElementById('sendAgentBtn').disabled=false;
+    return;
+  }
+
+  // --- External API path (fallback for non-webhook agents) ---
   const PROXY='https://corsproxy.io/?url=';
   const BASE='https://backend.agpt.co/external-api';
   const HEADERS={'X-API-Key':apiKey,'Content-Type':'application/json','Accept':'application/json'};
