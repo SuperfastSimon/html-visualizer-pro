@@ -308,12 +308,12 @@ select.lang-sel{padding:4px 6px;background:#12121f;border:1px solid #6366f1;colo
     <label>Agent selecteren</label>
     <select id="agentSelect" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
       <optgroup label="🏗 Genesis Protocol">
-        <option value="d5f31b2a-d683-4748-a0e3-acbb9ffde653" data-graph="63421075-a04d-458d-a845-082a44a8d522">Genesis Boss Agent</option>
-        <option value="a2627a06-0d4a-4d9b-bf61-ab428f05c04f" data-graph="825855d2-1af3-4915-b26d-71bd65ac7c45" data-webhook="https://backend.agpt.co/api/integrations/generic_webhook/webhooks/00d8b12d-a41e-4a59-a81b-e246783043d5/ingress" selected>Code Writer Agent</option>
-        <option value="ecbd1bbb-7992-452d-8901-aeaa7205fa55" data-graph="9d4cedb8-d047-4921-ac79-cf636e761b99">Code Architect Agent</option>
-        <option value="96c9f3ce-b970-4c50-bf2e-37d089d13422" data-graph="af73c435-ab1d-4fed-beca-e8e5b9b5b95e">Genesis Builder Agent</option>
-        <option value="56b3ad38-fa86-4757-978d-0671d984e513" data-graph="da52be89-4c37-4c38-82ce-bc5018771846">Genesis Deployment Agent</option>
-        <option value="d4488f6d-b2ec-43c3-b16f-2aaeecc577d6" data-graph="c1fdd73c-644f-4234-94fd-f96f0a74ef6f">Genesis Maintainer</option>
+        <option value="d5f31b2a-d683-4748-a0e3-acbb9ffde653" data-graph="63421075-a04d-458d-a845-082a44a8d522" data-type="boss">Genesis Boss Agent</option>
+        <option value="a2627a06-0d4a-4d9b-bf61-ab428f05c04f" data-graph="825855d2-1af3-4915-b26d-71bd65ac7c45" data-webhook="https://backend.agpt.co/api/integrations/generic_webhook/webhooks/00d8b12d-a41e-4a59-a81b-e246783043d5/ingress" data-type="code-writer" selected>Code Writer Agent</option>
+        <option value="ecbd1bbb-7992-452d-8901-aeaa7205fa55" data-graph="9d4cedb8-d047-4921-ac79-cf636e761b99" data-type="code-writer">Code Architect Agent</option>
+        <option value="96c9f3ce-b970-4c50-bf2e-37d089d13422" data-graph="af73c435-ab1d-4fed-beca-e8e5b9b5b95e" data-type="builder">Genesis Builder Agent</option>
+        <option value="56b3ad38-fa86-4757-978d-0671d984e513" data-graph="da52be89-4c37-4c38-82ce-bc5018771846" data-type="deployer">Genesis Deployment Agent</option>
+        <option value="d4488f6d-b2ec-43c3-b16f-2aaeecc577d6" data-graph="c1fdd73c-644f-4234-94fd-f96f0a74ef6f" data-type="code-writer">Genesis Maintainer</option>
       </optgroup>
       <optgroup label="📄 Content">
         <option value="c4efcf4d-9464-4b35-b2e6-10518952f2f5" data-graph="16bf28ad-958e-4207-a29f-cf4a0a92d945">AI Premium Report Factory</option>
@@ -334,12 +334,74 @@ select.lang-sel{padding:4px 6px;background:#12121f;border:1px solid #6366f1;colo
     </div>
     <label>Instructie voor de agent</label>
     <textarea id="agentPrompt" style="width:100%;padding:8px 12px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px;min-height:80px;outline:none;font-family:system-ui;resize:vertical" placeholder="Bijv: Verbeter deze code, voeg error handling toe, maak het responsive...">Review and improve this code. Fix any bugs, improve performance, and add best practices. Return the improved code.</textarea>
+
+    <!-- Mode buttons: code-writer agents only -->
+    <div id="agentModeWrap">
     <label>Mode</label>
     <div style="display:flex;gap:6px;margin-top:4px">
       <button class="btn" id="modeImprove" onclick="setAgentMode('improve')" style="flex:1;padding:6px;background:#7c3aed;border-color:#7c3aed;color:#fff">✨ Improve</button>
       <button class="btn" id="modeReview" onclick="setAgentMode('review')" style="flex:1;padding:6px">📝 Review Only</button>
       <button class="btn" id="modeConvert" onclick="setAgentMode('convert')" style="flex:1;padding:6px">🔄 Convert</button>
     </div>
+    </div>
+
+    <!-- Boss Agent extra inputs -->
+    <div id="bossFields" style="display:none">
+      <label>Priority</label>
+      <select id="bossPriority" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
+        <option value="normal" selected>Normal</option>
+        <option value="high">High</option>
+        <option value="critical">Critical</option>
+      </select>
+      <label style="margin-top:8px;display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="bossAutoDeploy" checked> Auto Deploy after build
+      </label>
+      <label style="margin-top:6px">Min Quality Score (0–100)</label>
+      <input type="number" id="bossQuality" value="70" min="0" max="100" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
+      <label style="margin-top:6px">Output Language</label>
+      <select id="bossOutputLang" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
+        <option value="javascript" selected>JavaScript</option>
+        <option value="python">Python</option>
+        <option value="typescript">TypeScript</option>
+        <option value="html">HTML/CSS</option>
+        <option value="rust">Rust</option>
+        <option value="go">Go</option>
+      </select>
+    </div>
+
+    <!-- Builder Agent extra inputs -->
+    <div id="builderFields" style="display:none">
+      <label>Requirements / notes</label>
+      <textarea id="builderReqs" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px;min-height:60px;outline:none;font-family:system-ui;resize:vertical" placeholder="e.g. must pass unit tests, no external deps..."></textarea>
+      <label style="margin-top:6px">Min Quality Score (0–100)</label>
+      <input type="number" id="builderQuality" value="70" min="0" max="100" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
+      <label style="margin-top:6px">Output Language</label>
+      <select id="builderOutputLang" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
+        <option value="javascript" selected>JavaScript</option>
+        <option value="python">Python</option>
+        <option value="typescript">TypeScript</option>
+        <option value="html">HTML/CSS</option>
+        <option value="rust">Rust</option>
+        <option value="go">Go</option>
+      </select>
+    </div>
+
+    <!-- Deployer Agent extra inputs -->
+    <div id="deployerFields" style="display:none">
+      <label>GitHub Token</label>
+      <input type="password" id="deployerGhToken" placeholder="ghp_xxxxxxxxxxxx" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
+      <label style="margin-top:6px">GitHub Username</label>
+      <input type="text" id="deployerGhUser" placeholder="your-github-username" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
+      <label style="margin-top:6px">Repo Name</label>
+      <input type="text" id="deployerRepo" placeholder="my-project" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
+      <label style="margin-top:6px">Deploy Target</label>
+      <select id="deployerTarget" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
+        <option value="github_pages" selected>GitHub Pages</option>
+        <option value="vercel">Vercel</option>
+        <option value="netlify">Netlify</option>
+      </select>
+    </div>
+
     <br>
     <button class="btn primary" onclick="sendToAgent()" style="width:100%;padding:10px;font-size:13px;font-weight:600" id="sendAgentBtn">🤖 Send to Agent</button>
     <div id="agentProgress" style="display:none;margin-top:8px">
@@ -897,7 +959,21 @@ function openAgent(){
   if(k)document.getElementById('agptKey').value=k;
   document.getElementById('agentSelect').onchange=function(){
     document.getElementById('customAgentWrap').style.display=this.value==='custom'?'block':'none';
+    const type=this.options[this.selectedIndex]?.dataset?.type||'code-writer';
+    document.getElementById('agentModeWrap').style.display=type==='code-writer'?'block':'none';
+    document.getElementById('bossFields').style.display=type==='boss'?'block':'none';
+    document.getElementById('builderFields').style.display=type==='builder'?'block':'none';
+    document.getElementById('deployerFields').style.display=type==='deployer'?'block':'none';
   };
+  // Init state for default selection
+  (function(){
+    const sel=document.getElementById('agentSelect');
+    const type=sel.options[sel.selectedIndex]?.dataset?.type||'code-writer';
+    document.getElementById('agentModeWrap').style.display=type==='code-writer'?'block':'none';
+    document.getElementById('bossFields').style.display=type==='boss'?'block':'none';
+    document.getElementById('builderFields').style.display=type==='builder'?'block':'none';
+    document.getElementById('deployerFields').style.display=type==='deployer'?'block':'none';
+  })();
 }
 function closeAgent(){document.getElementById('agentModal').classList.remove('show')}
 function setAgentMode(mode){
@@ -934,13 +1010,46 @@ async function sendToAgent(){
   const sel=document.getElementById('agentSelect');
   let graphId=sel.options[sel.selectedIndex]?.dataset?.graph||'';
   const webhookUrl=sel.options[sel.selectedIndex]?.dataset?.webhook||'';
+  const agentType=sel.options[sel.selectedIndex]?.dataset?.type||'code-writer';
   if(sel.value==='custom') graphId=document.getElementById('customAgentId').value.trim();
   const prompt=document.getElementById('agentPrompt').value.trim();
   if(!webhookUrl&&!apiKey){agentLog('❌ API key required','err');return}
   if(!webhookUrl&&!graphId){agentLog('❌ No graph ID for selected agent','err');return}
   if(apiKey) localStorage.setItem('viz-agpt-key',apiKey);
   const code=currentLang==='html'?getFullHTML():editor.value;
-  const fullPrompt=prompt+'\n\nLanguage: '+currentLang+'\n\n```\n'+code+'\n```';
+  // Build payload based on agent type
+  let agentPayload={};
+  if(agentType==='boss'){
+    agentPayload={
+      project_request:prompt+'\n\nLanguage: '+currentLang+'\n\n```\n'+code+'\n```',
+      priority:document.getElementById('bossPriority').value,
+      auto_deploy:document.getElementById('bossAutoDeploy').checked,
+      min_quality_score:parseInt(document.getElementById('bossQuality').value)||70,
+      output_language:document.getElementById('bossOutputLang').value
+    };
+  } else if(agentType==='builder'){
+    agentPayload={
+      code:code,
+      language:currentLang,
+      requirements:document.getElementById('builderReqs').value.trim()||prompt,
+      min_quality_score:parseInt(document.getElementById('builderQuality').value)||70,
+      output_language:document.getElementById('builderOutputLang').value
+    };
+  } else if(agentType==='deployer'){
+    agentPayload={
+      validated_files:[{filename:'index.'+currentLang,content:code}],
+      github_token:document.getElementById('deployerGhToken').value.trim(),
+      github_username:document.getElementById('deployerGhUser').value.trim(),
+      repo_name:document.getElementById('deployerRepo').value.trim(),
+      deploy_target:document.getElementById('deployerTarget').value
+    };
+    if(!agentPayload.github_token){agentLog('❌ GitHub token required for Deployment Agent','err');return}
+    if(!agentPayload.github_username){agentLog('❌ GitHub username required','err');return}
+    if(!agentPayload.repo_name){agentLog('❌ Repo name required','err');return}
+  } else {
+    agentPayload={input:prompt+'\n\nLanguage: '+currentLang+'\n\n```\n'+code+'\n```'};
+  }
+  const fullPrompt=agentPayload.input||agentPayload.project_request||prompt;
   document.getElementById('agentLog').innerHTML='';
   document.getElementById('agentResult').style.display='none';
   agentSetProgress(0);
@@ -955,7 +1064,7 @@ async function sendToAgent(){
       const whRes=await fetch('https://corsproxy.io/?url='+encodeURIComponent(webhookUrl),{
         method:'POST',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({input:fullPrompt})
+        body:JSON.stringify(agentPayload)
       });
       if(whRes.ok){
         agentLog('✅ Webhook accepted — agent is running!','ok');
@@ -995,7 +1104,7 @@ async function sendToAgent(){
     const execRes=await fetch(PROXY+encodeURIComponent(BASE+'/v1/graphs/'+graphId+'/execute/'+version),{
       method:'POST',
       headers:HEADERS,
-      body:JSON.stringify({node_input:{input:fullPrompt}})
+      body:JSON.stringify({node_input:agentPayload})
     });
     if(!execRes.ok){
       const err=await execRes.json().catch(()=>({detail:'HTTP '+execRes.status}));
