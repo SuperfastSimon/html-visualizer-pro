@@ -309,7 +309,7 @@ select.lang-sel{padding:4px 6px;background:#12121f;border:1px solid #6366f1;colo
     <select id="agentSelect" style="width:100%;padding:8px;background:#12121f;border:1px solid #2a2a4a;border-radius:6px;color:#ddd;font-size:12px">
       <optgroup label="🏗 Genesis Protocol">
         <option value="d5f31b2a-d683-4748-a0e3-acbb9ffde653" data-graph="63421075-a04d-458d-a845-082a44a8d522" data-type="boss">Genesis Boss Agent</option>
-        <option value="a2627a06-0d4a-4d9b-bf61-ab428f05c04f" data-graph="825855d2-1af3-4915-b26d-71bd65ac7c45" data-version="16" data-type="code-writer" selected>Code Writer Agent</option>
+        <option value="a2627a06-0d4a-4d9b-bf61-ab428f05c04f" data-graph="825855d2-1af3-4915-b26d-71bd65ac7c45" data-version="21" data-type="code-writer" selected>Code Writer Agent</option>
         <option value="ecbd1bbb-7992-452d-8901-aeaa7205fa55" data-graph="9d4cedb8-d047-4921-ac79-cf636e761b99" data-type="code-writer">Code Architect Agent</option>
         <option value="96c9f3ce-b970-4c50-bf2e-37d089d13422" data-graph="af73c435-ab1d-4fed-beca-e8e5b9b5b95e" data-type="builder">Genesis Builder Agent</option>
         <option value="56b3ad38-fa86-4757-978d-0671d984e513" data-graph="da52be89-4c37-4c38-82ce-bc5018771846" data-type="deployer">Genesis Deployment Agent</option>
@@ -343,6 +343,14 @@ select.lang-sel{padding:4px 6px;background:#12121f;border:1px solid #6366f1;colo
       <button class="btn" id="modeReview" onclick="setAgentMode('review')" style="flex:1;padding:6px">📝 Review Only</button>
       <button class="btn" id="modeConvert" onclick="setAgentMode('convert')" style="flex:1;padding:6px">🔄 Convert</button>
     </div>
+    <label style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+      <span>Min Quality Score</span>
+      <span id="qualityScoreVal" style="font-weight:700;color:#a855f7;font-size:14px">7 / 10</span>
+    </label>
+    <input type="range" id="codeWriterQuality" min="1" max="10" value="7"
+      oninput="document.getElementById('qualityScoreVal').textContent=this.value+' / 10'"
+      style="width:100%;accent-color:#a855f7;margin-top:4px">
+    <div style="display:flex;justify-content:space-between;font-size:10px;color:#666;margin-top:2px"><span>1 — minimal</span><span>10 — perfect</span></div>
     </div>
 
     <!-- Boss Agent extra inputs -->
@@ -412,6 +420,12 @@ select.lang-sel{padding:4px 6px;background:#12121f;border:1px solid #6366f1;colo
     <div id="agentLog" class="deploy-log"></div>
     <div id="agentResult" style="display:none;margin-top:10px">
       <label>📥 Agent Output <span style="font-weight:400;font-size:10px;color:#888">(code blocks auto-extracted on Apply)</span></label>
+      <div id="agentQualityBadge" style="display:none;margin-bottom:8px;padding:8px 12px;background:#1e1e36;border:1px solid #3a3a5a;border-radius:8px;font-size:12px;display:flex;align-items:center;gap:8px">
+        <span>⭐ Quality Score:</span>
+        <span id="agentQualityScore" style="font-weight:700;color:#a855f7;font-size:16px"></span>
+        <span style="color:#888;font-size:11px">/10</span>
+        <span id="agentQualityNote" style="color:#888;font-size:11px;margin-left:4px"></span>
+      </div>
       <pre id="agentOutput" style="background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;font-size:12px;font-family:monospace;max-height:250px;overflow:auto;white-space:pre-wrap"></pre>
       <div style="display:flex;gap:6px;margin-top:8px">
         <button class="btn primary" onclick="applyAgentResult()" style="flex:1;padding:8px">✅ Apply to Editor</button>
@@ -1046,6 +1060,15 @@ async function sendToAgent(){
     if(!agentPayload.github_token){agentLog('❌ GitHub token required for Deployment Agent','err');return}
     if(!agentPayload.github_username){agentLog('❌ GitHub username required','err');return}
     if(!agentPayload.repo_name){agentLog('❌ Repo name required','err');return}
+  } else if(agentType==='code-writer'){
+    const minQ=parseInt(document.getElementById('codeWriterQuality')?.value||'7')||7;
+    agentPayload={
+      task:prompt+'\n\nMode: '+agentMode,
+      language:currentLang,
+      requirements:'Min quality score: '+minQ+'/10. Code snippet:\n```\n'+code+'\n```',
+      framework:'',
+      min_quality_score:minQ
+    };
   } else {
     agentPayload={input:prompt+'\n\nLanguage: '+currentLang+'\n\n```\n'+code+'\n```'};
   }
@@ -1156,6 +1179,18 @@ async function sendToAgent(){
             if(!output) output=JSON.stringify(data,null,2);
             lastAgentOutput=output;
             document.getElementById('agentOutput').textContent=output;
+            // Try to extract quality score from output
+            const qMatch=output.match(/quality[_\s-]*score[\s:]*([0-9]{1,2}(?:\.[0-9])?)\s*(?:\/\s*10)?/i);
+            const qBadge=document.getElementById('agentQualityBadge');
+            if(qMatch){
+              const qScore=parseFloat(qMatch[1]);
+              document.getElementById('agentQualityScore').textContent=qScore;
+              const qColor=qScore>=8?'#4ade80':qScore>=5?'#fbbf24':'#ef4444';
+              document.getElementById('agentQualityScore').style.color=qColor;
+              const qNote=qScore>=8?'Excellent':qScore>=6?'Good':qScore>=4?'Needs work':'Low quality';
+              document.getElementById('agentQualityNote').textContent='— '+qNote;
+              qBadge.style.display='flex';
+            } else {qBadge.style.display='none';}
             document.getElementById('agentResult').style.display='block';
             document.getElementById('sendAgentBtn').textContent='🤖 Send to Agent';
             document.getElementById('sendAgentBtn').disabled=false;
